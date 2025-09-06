@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Books{% endblock %}
+
+{% block content %}
+<h1>Books</h1>
+
+<form method="get" class="row g-3 mb-3">
+    <!-- Title search -->
+    <div class="col-md-3">
+        <input type="text" name="title" placeholder="Search by title" value="{{ title_query }}" class="form-control">
+    </div>
+
+    <!-- Author search -->
+    <div class="col-md-3">
+        <input type="text" name="author" placeholder="Search by author" value="{{ author_query }}" class="form-control">
+    </div>
+
+    <!-- Category filter -->
+    <div class="col-md-2">
+        <select name="category" class="form-select">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if category_id|default_if_none:'' == cat.id|stringformat:"s" %}selected{% endif %}>
+                    {{ cat.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Availability filter -->
+    <div class="col-md-2">
+        <select name="availability" class="form-select">
+            <option value="">All Availability</option>
+            <option value="available" {% if availability == 'available' %}selected{% endif %}>Available</option>
+            <option value="unavailable" {% if availability == 'unavailable' %}selected{% endif %}>Unavailable</option>
+        </select>
+    </div>
+
+    <!-- Price filters -->
+    <div class="col-md-1">
+        <input type="number" name="min_price" placeholder="Min" value="{{ min_price }}" class="form-control">
+    </div>
+    <div class="col-md-1">
+        <input type="number" name="max_price" placeholder="Max" value="{{ max_price }}" class="form-control">
+    </div>
+
+    <!-- Submit button -->
+    <div class="col-md-12">
+        <button type="submit" class="btn btn-primary mt-2">Filter</button>
+    </div>
+</form>
+
+{% if books %}
+<table class="table table-striped mt-3">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Authors</th>
+            <th>Category</th>
+            <th>Publisher</th>
+            <th>Price</th>
+            <th>Availability</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for book in books %}
+        <tr>
+            <td>{{ book.title }}</td>
+            <td>{{ book.authors.all|join:", " }}</td>
+            <td>{{ book.category.name }}</td>
+            <td>{{ book.publisher.name }}</td>
+            <td>${{ book.price }}</td>
+            <td>{{ book.availability_status }}</td>
+            <td>
+                <a href="{% url 'book_edit' book.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                <a href="{% url 'book_delete' book.pk %}" class="btn btn-sm btn-danger">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<form method="post" action="{% url 'delete_filtered_books' %}">
+    {% csrf_token %}
+    <!-- Pass the current filters to deletion view -->
+    <input type="hidden" name="title" value="{{ title_query }}">
+    <input type="hidden" name="author" value="{{ author_query }}">
+    <input type="hidden" name="category" value="{{ category_id }}">
+    <input type="hidden" name="availability" value="{{ availability }}">
+    <input type="hidden" name="min_price" value="{{ min_price }}">
+    <input type="hidden" name="max_price" value="{{ max_price }}">
+    <button type="submit" class="btn btn-danger mt-2">Delete Filtered Books</button>
+</form>
+
+{% else %}
+<p>No books found.</p>
+{% endif %}
+{% endblock %}
