@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'books',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -101,7 +102,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 LOGIN_URL = 'login'  # redirects unauthorized users to /users/login/
-AUTH_USER_MODEL = 'books.User'
+AUTH_USER_MODEL = 'users.User'
 LOGIN_REDIRECT_URL = 'book_list'   # Redirect after login
 LOGOUT_REDIRECT_URL = 'login'      # Redirect after logout
 

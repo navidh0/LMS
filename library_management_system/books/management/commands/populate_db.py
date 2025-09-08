@@ -1,14 +1,17 @@
-
-
 from django.core.management.base import BaseCommand
 from books.models import Author, Category, Publisher, Book
 from datetime import date
 import random
 
 
-def generate_isbn():
-    # Return a 13-digit dummy ISBN
-    return ''.join([str(random.randint(0, 9)) for _ in range(13)])
+def generate_isbn(existing: set[str] | None = None) -> str:
+    """Generate a unique 13-digit ISBN not in existing."""
+    if existing is None:
+        existing = set()
+    while True:
+        candidate = ''.join([str(random.randint(0, 9)) for _ in range(13)])
+        if candidate not in existing:
+            return candidate
 
 
 class Command(BaseCommand):
@@ -52,7 +55,11 @@ class Command(BaseCommand):
             "Inferno", "Catching Fire", "It", "Coraline"
         ]
 
-        for title in book_titles:
+        existing_isbns = set(Book.objects.values_list('isbn', flat=True))
+        # Create many books including repeated titles with unique ISBNs
+        total = 0
+        for i in range(100):
+            title = random.choice(book_titles) + f" #{i+1}"
             num_authors = random.choice([1, 2])
             book_authors = random.sample(authors, num_authors)
             category = random.choice(categories)
@@ -63,11 +70,12 @@ class Command(BaseCommand):
             day = random.randint(1, 28)
             publish_date = date(year, month, day)
             availability_status = random.choice(["available", "unavailable"])
-            isbn = generate_isbn()  # <-- add this line
+            isbn = generate_isbn(existing_isbns)
+            existing_isbns.add(isbn)
 
-            book, created = Book.objects.get_or_create(
+            book = Book.objects.create(
                 title=title,
-                isbn=isbn,  # <-- include ISBN
+                isbn=isbn,
                 price=price,
                 publish_date=publish_date,
                 availability_status=availability_status,
@@ -75,10 +83,12 @@ class Command(BaseCommand):
                 category=category
             )
 
-        for author in book_authors:
-            book.authors.add(author)
-        book.save()
+            # ✅ Correct: assign authors INSIDE the loop
+            for author in book_authors:
+                book.authors.add(author)
 
+            book.save()
+            total += 1
 
-        self.stdout.write(self.style.SUCCESS(f'Created {len(book_titles)} books'))
+        self.stdout.write(self.style.SUCCESS(f'Created {total} books'))
         self.stdout.write(self.style.SUCCESS('Database population completed successfully!'))

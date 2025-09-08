@@ -4,15 +4,15 @@
 {% block content %}
 <h1>Books</h1>
 
-<form method="get" class="row g-3 mb-3">
+<form method="get" class="row g-3 mb-3 filter-card p-3 border rounded bg-light">
     <!-- Title search -->
     <div class="col-md-3">
-        <input type="text" name="title" placeholder="Search by title" value="{{ title_query }}" class="form-control">
+        <input type="text" name="title" placeholder="Search by title" value="{{ title_query|default:'' }}" class="form-control">
     </div>
 
     <!-- Author search -->
     <div class="col-md-3">
-        <input type="text" name="author" placeholder="Search by author" value="{{ author_query }}" class="form-control">
+        <input type="text" name="author" placeholder="Search by author" value="{{ author_query|default:'' }}" class="form-control">
     </div>
 
     <!-- Category filter -->
@@ -20,7 +20,7 @@
         <select name="category" class="form-select">
             <option value="">All Categories</option>
             {% for cat in categories %}
-                <option value="{{ cat.id }}" {% if category_id|default_if_none:'' == cat.id|stringformat:"s" %}selected{% endif %}>
+                <option value="{{ cat.id }}" {% if category_id and category_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
                     {{ cat.name }}
                 </option>
             {% endfor %}
@@ -36,19 +36,53 @@
         </select>
     </div>
 
-    <!-- Price filters -->
-    <div class="col-md-1">
-        <input type="number" name="min_price" placeholder="Min" value="{{ min_price }}" class="form-control">
-    </div>
-    <div class="col-md-1">
-        <input type="number" name="max_price" placeholder="Max" value="{{ max_price }}" class="form-control">
+    <!-- Price range slider -->
+    <div class="col-md-4">
+        <label class="form-label">Price Range</label>
+        <div class="d-flex align-items-center gap-2">
+            <input type="range" class="form-range" min="0" max="200" step="1" name="min_price" value="{{ min_price|default:0 }}" oninput="document.getElementById('minPrice').value=this.value">
+            <input type="range" class="form-range" min="0" max="200" step="1" name="max_price" value="{{ max_price|default:200 }}" oninput="document.getElementById('maxPrice').value=this.value">
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1">
+            <div class="input-group input-group-sm" style="width:180px;">
+              <span class="input-group-text">Min $</span>
+              <input id="minPrice" type="number" value="{{ min_price|default:0 }}" class="form-control" oninput="document.querySelector('input[name=min_price]').value=this.value">
+            </div>
+            <div class="input-group input-group-sm" style="width:180px;">
+              <span class="input-group-text">Max $</span>
+              <input id="maxPrice" type="number" value="{{ max_price|default:200 }}" class="form-control" oninput="document.querySelector('input[name=max_price]').value=this.value">
+            </div>
+        </div>
     </div>
 
-    <!-- Submit button -->
-    <div class="col-md-12">
-        <button type="submit" class="btn btn-primary mt-2">Filter</button>
+    <!-- Publish date (exact) -->
+    <div class="col-md-2">
+        <label class="form-label">Publish date</label>
+        <input type="date" name="publish_date" value="{{ publish_date|default:'' }}" class="form-control" placeholder="Publish date">
+    </div>
+
+    <!-- Action button: Filter (left) -->
+    <div class="col-md-12 mt-2">
+        <button type="submit" class="btn btn-primary">Filter</button>
     </div>
 </form>
+
+<!-- Admin-only Delete Filtered on right side, separate form to avoid nesting -->
+{% if user.is_authenticated and user.role == 'admin' %}
+<div class="d-flex justify-content-end mb-3">
+  <form method="post" action="{% url 'delete_filtered_books' %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="title" value="{{ title_query|default:'' }}">
+      <input type="hidden" name="author" value="{{ author_query|default:'' }}">
+      <input type="hidden" name="category" value="{{ category_id|default:'' }}">
+      <input type="hidden" name="availability" value="{{ availability|default:'' }}">
+      <input type="hidden" name="min_price" value="{{ min_price|default:'' }}">
+      <input type="hidden" name="max_price" value="{{ max_price|default:'' }}">
+      <input type="hidden" name="publish_date" value="{{ publish_date|default:'' }}">
+      <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Delete all filtered books?')">Delete Filtered</button>
+  </form>
+</div>
+{% endif %}
 
 {% if books %}
 <table class="table table-striped mt-3">
@@ -75,23 +109,20 @@
             <td>
                 <a href="{% url 'book_edit' book.pk %}" class="btn btn-sm btn-warning">Edit</a>
                 <a href="{% url 'book_delete' book.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                {% if book.id in favorite_ids %}
+                    <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-sm btn-primary">★ Favorited</a>
+                {% else %}
+                    <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-sm btn-outline-primary">☆ Favorite</a>
+                {% endif %}
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
-<form method="post" action="{% url 'delete_filtered_books' %}">
-    {% csrf_token %}
-    <!-- Pass the current filters to deletion view -->
-    <input type="hidden" name="title" value="{{ title_query }}">
-    <input type="hidden" name="author" value="{{ author_query }}">
-    <input type="hidden" name="category" value="{{ category_id }}">
-    <input type="hidden" name="availability" value="{{ availability }}">
-    <input type="hidden" name="min_price" value="{{ min_price }}">
-    <input type="hidden" name="max_price" value="{{ max_price }}">
-    <button type="submit" class="btn btn-danger mt-2">Delete Filtered Books</button>
-</form>
+{# Pagination removed per request #}
+
+{# Delete button moved next to Filter in the filter bar for admins #}
 
 {% else %}
 <p>No books found.</p>

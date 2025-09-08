@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}My Favorites{% endblock %}
+
+{% block content %}
+<h1>My Favorite Books</h1>
+
+{% if books %}
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Authors</th>
+      <th>Category</th>
+      <th>Publisher</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for book in books %}
+    <tr>
+      <td>{{ book.title }}</td>
+      <td>{{ book.authors.all|join:", " }}</td>
+      <td>{{ book.category.name }}</td>
+      <td>{{ book.publisher.name }}</td>
+      <td>
+        <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-sm btn-primary">★ Favorited</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No favorite books yet.</p>
+{% endif %}
+{% endblock %}
+
+

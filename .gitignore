@@ -1,1 +1,30 @@
 venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+ENV/
+.venv/
+
+# Django
+*.log
+library_management_system/db.sqlite3
+media/
+staticfiles/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Migrations cache
+**/migrations/__pycache__/
+
+# Environment
+.env
+.env.*

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Categories{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center">
+  <h1>Categories</h1>
+  <a href="{% url 'category_add' %}" class="btn btn-primary">Add Category</a>
+  </div>
+
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Parent</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cat in categories %}
+    <tr>
+      <td>{{ cat.name }}</td>
+      <td>{% if cat.parent_category %}{{ cat.parent_category.name }}{% else %}-{% endif %}</td>
+      <td>
+        <a href="{% url 'category_delete' cat.pk %}" class="btn btn-sm btn-danger">Delete</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+
+

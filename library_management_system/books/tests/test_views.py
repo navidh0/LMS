@@ -1,92 +1,97 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from books.models import Book, Author, Category, Publisher
-from django.db.models import Q
+from books.models import Book, Author, Category, Publisher, FavoriteBook
+from datetime import date
 
-User = get_user_model()
 
-class BookCRUDTests(TestCase):
-
+class BookViewsTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser', password='pass')
-        self.client.login(username='testuser', password='pass')
-
-        self.author = Author.objects.create(full_name='Author One')
-        self.category = Category.objects.create(name='Fiction')
-        self.publisher = Publisher.objects.create(name='Publisher One')
-
+        User = get_user_model()
+        self.admin = User.objects.create_user(username='admin', password='pass', full_name='Admin', role='admin')
+        self.member = User.objects.create_user(username='mem', password='pass', full_name='Member', role='member')
+        self.publisher = Publisher.objects.create(name='P1')
+        self.category = Category.objects.create(name='C1')
+        self.author = Author.objects.create(full_name='A1')
         self.book = Book.objects.create(
-            title='Test Book',
-            isbn='1234567890123',
-            price=20,
-            publish_date='2023-01-01',
-            availability_status='available',
-            publisher=self.publisher,
-            category=self.category
+            title='B1', isbn='1234567890123', price=10, publish_date=date(2020,1,1),
+            availability_status='available', publisher=self.publisher, category=self.category
         )
         self.book.authors.add(self.author)
 
-    def test_book_list(self):
-        response = self.client.get(reverse('book_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Test Book')
+    def test_list_and_filters(self):
+        self.client.login(username='mem', password='pass')
+        resp = self.client.get(reverse('book_list'), {'title': 'B1'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'B1')
+        resp = self.client.get(reverse('book_list'), {'author': 'A1'})
+        self.assertContains(resp, 'B1')
+        resp = self.client.get(reverse('book_list'), {'category': str(self.category.id)})
+        self.assertContains(resp, 'B1')
+        resp = self.client.get(reverse('book_list'), {'min_price': '5', 'max_price': '15'})
+        self.assertContains(resp, 'B1')
+        resp = self.client.get(reverse('book_list'), {'start_date': '2019-01-01', 'end_date': '2021-01-01'})
+        self.assertContains(resp, 'B1')
 
-    def test_book_add(self):
-        response = self.client.post(reverse('book_add'), {
-            'title': 'New Book',
-            'isbn': '9876543210123',
-            'price': 30,
-            'publish_date': '2023-06-01',
-            'availability_status': 'available',
-            'publisher': self.publisher.id,
-            'category': self.category.id,
+    def test_member_cannot_crud(self):
+        self.client.login(username='mem', password='pass')
+        # Create
+        resp = self.client.post(reverse('book_add'), {})
+        self.assertEqual(resp.status_code, 403)
+        # Edit
+        resp = self.client.post(reverse('book_edit', args=[self.book.id]), {})
+        self.assertEqual(resp.status_code, 403)
+        # Delete
+        resp = self.client.post(reverse('book_delete', args=[self.book.id]), {})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_admin_crud(self):
+        self.client.login(username='admin', password='pass')
+        # Create
+        data = {
+            'title': 'B2','isbn': '1234567890124','price': 20,'publish_date': '2021-01-01',
+            'availability_status': 'available','publisher': self.publisher.id,'category': self.category.id,
+            'authors': [self.author.id]
+        }
+        resp = self.client.post(reverse('book_add'), data)
+        self.assertEqual(resp.status_code, 302)
+        # Edit
+        resp = self.client.post(reverse('book_edit', args=[self.book.id]), {
+            'title': 'B1-edit','isbn': '1234567890123','price': 15,'publish_date': '2020-01-01',
+            'availability_status': 'unavailable','publisher': self.publisher.id,'category': self.category.id,
             'authors': [self.author.id]
         })
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(Book.objects.filter(title='New Book').exists())
-
-    def test_book_edit(self):
-        response = self.client.post(reverse('book_edit', args=[self.book.id]), {
-            'title': 'Updated Book',
-            'isbn': self.book.isbn,
-            'price': 25,
-            'publish_date': '2023-01-01',
-            'availability_status': 'unavailable',
-            'publisher': self.publisher.id,
-            'category': self.category.id,
-            'authors': [self.author.id]
-        })
+        self.assertEqual(resp.status_code, 302)
         self.book.refresh_from_db()
-        self.assertEqual(self.book.title, 'Updated Book')
-        self.assertEqual(self.book.availability_status, 'unavailable')
-
-    def test_book_delete(self):
-        response = self.client.post(reverse('book_delete', args=[self.book.id]))
+        self.assertEqual(self.book.title, 'B1-edit')
+        # Delete
+        resp = self.client.post(reverse('book_delete', args=[self.book.id]))
+        self.assertEqual(resp.status_code, 302)
         self.assertFalse(Book.objects.filter(id=self.book.id).exists())
 
-
-    def test_book_search(self):
-        response = self.client.get(reverse('book_list'), {'q': 'Test'})
-        self.assertContains(response, 'Test Book')
-
-    def test_book_filter_availability(self):
-        response = self.client.get(reverse('book_list'), {'availability': 'available'})
-        self.assertContains(response, 'Test Book')
-
-    def test_delete_filtered_books(self):
-        # Add another book
-        book2 = Book.objects.create(
-            title='Second Book',
-            isbn='1111111111111',
-            price=15,
-            publish_date='2023-01-01',
-            availability_status='available',
-            publisher=self.publisher,
-            category=self.category
+    def test_delete_filtered_admin_only(self):
+        # member forbidden
+        self.client.login(username='mem', password='pass')
+        resp = self.client.post(reverse('delete_filtered_books'), {'title': 'B1'})
+        self.assertEqual(resp.status_code, 403)
+        # admin can delete
+        # create another matching book
+        self.client.login(username='admin', password='pass')
+        b = Book.objects.create(
+            title='Another B1', isbn='1234567890125', price=12, publish_date=date(2020,1,2),
+            availability_status='available', publisher=self.publisher, category=self.category
         )
-        book2.authors.add(self.author)
+        b.authors.add(self.author)
+        resp = self.client.post(reverse('delete_filtered_books'), {'title': 'B1'})
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(Book.objects.filter(title__icontains='B1').exists())
 
-        response = self.client.get(reverse('delete_filtered_books') + '?availability=available')
-        self.assertRedirects(response, reverse('book_list'))
-        self.assertFalse(Book.objects.filter(availability_status='available').exists())
+    def test_favorite_toggle(self):
+        self.client.login(username='mem', password='pass')
+        resp = self.client.get(reverse('book_favorite_toggle', args=[self.book.id]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(FavoriteBook.objects.filter(user__username='mem', book=self.book).exists())
+        # toggle off
+        resp = self.client.get(reverse('book_favorite_toggle', args=[self.book.id]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(FavoriteBook.objects.filter(user__username='mem', book=self.book).exists())
