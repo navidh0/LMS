@@ -10,7 +10,10 @@ ENV/
 
 # Django
 *.log
+db.sqlite3
 library_management_system/db.sqlite3
+**/db.sqlite3
+*.sqlite3
 media/
 staticfiles/
 
@@ -24,7 +27,13 @@ Thumbs.db
 
 # Migrations cache
 **/migrations/__pycache__/
+# Ignore migration files but keep package initializers
+**/migrations/*.py
+!**/migrations/__init__.py
 
 # Environment
 .env
 .env.*
+
+# Ignore ignore-files themselves (will require git rm --cached to stop tracking)
+**/.gitignore
