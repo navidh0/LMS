@@ -1,53 +1,9 @@
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
-from django.core.paginator import Paginator
 from django.urls import reverse
 from .forms import BookForm
-from .models import Book, Category
-@login_required
-def category_list(request):
-    if request.user.role != 'admin':
-        return HttpResponseForbidden("Only admins can manage categories.")
-    categories = Category.objects.all()
-    return render(request, 'books/category_list.html', { 'categories': categories })
-
-@login_required
-def category_create(request):
-    if request.user.role != 'admin':
-        return HttpResponseForbidden("Only admins can manage categories.")
-    if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        parent_id = request.POST.get('parent')
-        parent = None
-        if parent_id and parent_id.isdigit():
-            parent = Category.objects.filter(pk=int(parent_id)).first()
-        if name:
-            Category.objects.create(name=name, parent_category=parent)
-            messages.success(request, 'Category created.')
-            return redirect('category_list')
-        messages.error(request, 'Name is required.')
-    categories = Category.objects.all()
-    return render(request, 'books/category_form.html', { 'categories': categories })
-
-@login_required
-def category_delete(request, pk):
-    if request.user.role != 'admin':
-        return HttpResponseForbidden("Only admins can manage categories.")
-    category = get_object_or_404(Category, pk=pk)
-    if request.method == 'POST':
-        category.delete()
-        messages.success(request, 'Category deleted.')
-        return redirect('category_list')
-    return render(request, 'books/category_confirm_delete.html', { 'category': category })
-@login_required
-def favorites_list(request):
-    from .models import FavoriteBook
-    fav_books = Book.objects.filter(favoritebook__user=request.user).select_related('publisher', 'category').prefetch_related('authors')
-    return render(request, 'books/favorites_list.html', { 'books': fav_books })
-from django.http import HttpResponseForbidden
-
+from .models import Book, Category, FavoriteBook
 
 @login_required
 def book_list(request):
@@ -115,7 +71,6 @@ def book_list(request):
     # Favorite ids for current user to color buttons
     favorite_ids = set()
     if request.user.is_authenticated:
-        from .models import FavoriteBook
         favorite_ids = set(FavoriteBook.objects.filter(user=request.user).values_list('book_id', flat=True))
 
     context = {
@@ -238,3 +193,45 @@ def delete_filtered_books(request):
 
         messages.success(request, f"{count} books deleted.")
         return redirect(reverse('book_list'))
+    
+@login_required
+def category_list(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("Only admins can manage categories.")
+    categories = Category.objects.all()
+    return render(request, 'books/category_list.html', { 'categories': categories })
+
+@login_required
+def category_create(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("Only admins can manage categories.")
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        parent_id = request.POST.get('parent')
+        parent = None
+        if parent_id and parent_id.isdigit():
+            parent = Category.objects.filter(pk=int(parent_id)).first()
+        if name:
+            Category.objects.create(name=name, parent_category=parent)
+            messages.success(request, 'Category created.')
+            return redirect('category_list')
+        messages.error(request, 'Name is required.')
+    categories = Category.objects.all()
+    return render(request, 'books/category_form.html', { 'categories': categories })
+
+@login_required
+def category_delete(request, pk):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("Only admins can manage categories.")
+    category = get_object_or_404(Category, pk=pk)
+    if request.method == 'POST':
+        category.delete()
+        messages.success(request, 'Category deleted.')
+        return redirect('category_list')
+    return render(request, 'books/category_confirm_delete.html', { 'category': category })
+
+@login_required
+def favorites_list(request):
+    fav_books = Book.objects.filter(favoritebook__user=request.user).select_related('publisher', 'category').prefetch_related('authors')
+    return render(request, 'books/favorites_list.html', { 'books': fav_books })
+from django.http import HttpResponseForbidden
