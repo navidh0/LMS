@@ -2,8 +2,29 @@
 {% block title %}Books{% endblock %}
 
 {% block content %}
-<h1>Books</h1>
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="m-0">Books</h1>
+      {% if user.is_authenticated and user.role == 'admin' %}
+      <form method="post" action="{% url 'delete_filtered_books' %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="title" value="{{ title_query|default:'' }}">
+      <input type="hidden" name="author" value="{{ author_query|default:'' }}">
+      <input type="hidden" name="category" value="{{ category_id|default:'' }}">
+      <input type="hidden" name="availability" value="{{ availability|default:'' }}">
+      <input type="hidden" name="min_price" value="{{ min_price|default:'' }}">
+      <input type="hidden" name="max_price" value="{{ max_price|default:'' }}">
+      <input type="hidden" name="publish_date" value="{{ publish_date|default:'' }}">
+      <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Delete all filtered books?')">Delete Filtered</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
 
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
 <form method="get" class="row g-3 mb-3 filter-card p-3 border rounded bg-light">
     <!-- Title search -->
     <div class="col-md-3">
@@ -65,27 +86,21 @@
     <div class="col-md-12 mt-2">
         <button type="submit" class="btn btn-primary">Filter</button>
     </div>
-</form>
-
-<!-- Admin-only Delete Filtered on right side, separate form to avoid nesting -->
-{% if user.is_authenticated and user.role == 'admin' %}
-<div class="d-flex justify-content-end mb-3">
-  <form method="post" action="{% url 'delete_filtered_books' %}" class="d-inline">
-      {% csrf_token %}
-      <input type="hidden" name="title" value="{{ title_query|default:'' }}">
-      <input type="hidden" name="author" value="{{ author_query|default:'' }}">
-      <input type="hidden" name="category" value="{{ category_id|default:'' }}">
-      <input type="hidden" name="availability" value="{{ availability|default:'' }}">
-      <input type="hidden" name="min_price" value="{{ min_price|default:'' }}">
-      <input type="hidden" name="max_price" value="{{ max_price|default:'' }}">
-      <input type="hidden" name="publish_date" value="{{ publish_date|default:'' }}">
-      <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Delete all filtered books?')">Delete Filtered</button>
   </form>
+  
+  {# admin delete action moved back to header bar #}
+  </div>
 </div>
-{% endif %}
+
+{# admin delete action moved to header bar #}
 
 {% if books %}
-<table class="table table-striped mt-3">
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="card shadow-sm mt-4 mb-4">
+      <div class="card-body p-4">
+        <div class="table-responsive">
+<table class="table table-striped align-middle mb-0">
     <thead>
         <tr>
             <th>Title</th>
@@ -102,23 +117,32 @@
         <tr>
             <td>{{ book.title }}</td>
             <td>{{ book.authors.all|join:", " }}</td>
-            <td>{{ book.category.name }}</td>
+            <td>{% if book.category %}{{ book.category.name }}{% else %}-{% endif %}</td>
             <td>{{ book.publisher.name }}</td>
             <td>${{ book.price }}</td>
             <td>{{ book.availability_status }}</td>
             <td>
-                <a href="{% url 'book_edit' book.pk %}" class="btn btn-sm btn-warning">Edit</a>
-                <a href="{% url 'book_delete' book.pk %}" class="btn btn-sm btn-danger">Delete</a>
-                {% if book.id in favorite_ids %}
-                    <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-sm btn-primary">★ Favorited</a>
-                {% else %}
-                    <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-sm btn-outline-primary">☆ Favorite</a>
-                {% endif %}
+                <div class="btn-group btn-group-sm" role="group">
+                    {% if user.is_authenticated and user.role == 'admin' %}
+                        <a href="{% url 'book_edit' book.pk %}" class="btn btn-outline-secondary" title="Edit">Edit</a>
+                        <a href="{% url 'book_delete' book.pk %}" class="btn btn-outline-danger" title="Delete">Delete</a>
+                    {% endif %}
+                    {% if book.id in favorite_ids %}
+                        <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-primary" title="Remove from favorites">★</a>
+                    {% else %}
+                        <a href="{% url 'book_favorite_toggle' book.pk %}" class="btn btn-outline-primary" title="Add to favorites">☆</a>
+                    {% endif %}
+                </div>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {# Pagination removed per request #}
 

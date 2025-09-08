@@ -8,7 +8,13 @@ def signup_view(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
+            # Force default role to member regardless of input
+            if not user.role:
+                user.role = 'member'
+            else:
+                user.role = 'member'
+            user.save()
             login(request, user)
             messages.success(request, "Signup successful!")
             return redirect('book_list')

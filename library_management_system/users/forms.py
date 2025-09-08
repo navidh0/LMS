@@ -8,11 +8,10 @@ User = get_user_model()
 
 class SignupForm(UserCreationForm):
     full_name = forms.CharField(max_length=200, required=True)
-    role = forms.ChoiceField(choices=[("member", "Member"), ("admin", "Admin")], required=True)
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "full_name", "role",)
+        fields = ("username", "full_name",)
 
 
 class LoginForm(AuthenticationForm):
